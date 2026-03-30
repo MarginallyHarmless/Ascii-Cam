@@ -237,21 +237,17 @@ let cols = 72;
 let colorMode = false;
 let inverted = false;
 let charset = CHARSETS.dense;
-let glitchRate = 18;
-let glitchRange = 2;
 let facingMode = 'user';
 let stream = null;
 let animId = null;
 let running = false;
 
-let targetIdx = [], displayIdx = [], glitchTTL = [], charColors = [];
+let targetIdx = [], charColors = [];
 let numCols = 0, numRows = 0;
 
 const feed     = document.getElementById('feed');
 const srcCv    = document.getElementById('src-canvas');
 const srcCtx   = srcCv.getContext('2d');
-const outCv    = document.getElementById('out-canvas');
-const outCtx   = outCv.getContext('2d');
 const errorOverlay = document.getElementById('error-overlay');
 const btnFlip  = document.getElementById('btn-flip');
 
@@ -288,8 +284,6 @@ function sampleFrame() {
 
   if (targetIdx.length !== n) {
     targetIdx  = new Int32Array(n);
-    displayIdx = new Int32Array(n);
-    glitchTTL  = new Uint8Array(n);
     charColors = new Uint8Array(n * 3);
   }
 
@@ -306,73 +300,10 @@ function sampleFrame() {
   return true;
 }
 
-function applyGlitch() {
-  const n = numCols * numRows;
-  for (let i = 0; i < n; i++) {
-    if (glitchTTL[i] > 0) {
-      glitchTTL[i]--;
-      if (glitchTTL[i] === 0) displayIdx[i] = targetIdx[i];
-    } else {
-      displayIdx[i] = targetIdx[i];
-      if (Math.random() * 1000 < glitchRate) {
-        const dir = Math.random() < 0.5 ? 1 : -1;
-        const steps = 1 + Math.floor(Math.random() * glitchRange);
-        let ni = targetIdx[i] + dir * steps;
-        ni = Math.max(0, Math.min(charset.length - 1, ni));
-        displayIdx[i] = ni;
-        glitchTTL[i] = 1 + Math.floor(Math.random() * 4);
-      }
-    }
-  }
-}
-
-function drawFrame() {
-  const W = window.innerWidth;
-  const H = window.innerHeight - document.querySelector('.bar').offsetHeight;
-
-  const cw = W / numCols;
-  const fs = cw / 0.62;
-  const ch = fs * 1.25;
-
-  if (outCv.width !== W || outCv.height !== H) {
-    outCv.width = W; outCv.height = H;
-  }
-
-  outCtx.fillStyle = '#000';
-  outCtx.fillRect(0, 0, W, H);
-  outCtx.font = `${fs}px monospace`;
-  outCtx.textBaseline = 'top';
-
-  const cs = charset;
-  for (let row = 0; row < numRows; row++) {
-    for (let col = 0; col < numCols; col++) {
-      const i = row * numCols + col;
-      const ci = displayIdx[i];
-      const ch_char = cs[ci];
-      if (!ch_char || ch_char === ' ') continue;
-
-      const glitching = glitchTTL[i] > 0;
-      if (colorMode) {
-        const r = charColors[i*3], g = charColors[i*3+1], b = charColors[i*3+2];
-        outCtx.fillStyle = glitching
-          ? `rgb(${Math.min(255,r+50)},${g},${b})`
-          : `rgb(${r},${g},${b})`;
-      } else {
-        const br = 1 - ci / (cs.length - 1);
-        const lv = Math.round(br * 255);
-        outCtx.fillStyle = glitching
-          ? `rgb(${Math.min(255,lv+70)},${lv},${lv})`
-          : `rgb(${lv},${lv},${lv})`;
-      }
-      outCtx.fillText(ch_char, col * cw, row * ch);
-    }
-  }
-}
-
 function loop() {
   animId = requestAnimationFrame(loop);
   if (!running) return;
-  if (sampleFrame()) { applyGlitch(); drawFrame(); }
+  sampleFrame();
 }
 
 async function startCam() {
@@ -415,11 +346,7 @@ document.getElementById('btn-inv').addEventListener('click', function() {
 });
 
 document.getElementById('btn-save').addEventListener('click', () => {
-  if (!outCv.width) return;
-  const a = document.createElement('a');
-  a.href = outCv.toDataURL('image/png');
-  a.download = 'ascii-cam.png';
-  a.click();
+  // updated in Task 5 to use Three.js renderer
 });
 
 document.getElementById('charset-sel').addEventListener('change', e => {
@@ -431,16 +358,6 @@ document.getElementById('cols-r').addEventListener('input', e => {
   cols = parseInt(e.target.value);
   document.getElementById('cols-v').textContent = cols;
   targetIdx = [];
-});
-
-document.getElementById('rate-r').addEventListener('input', e => {
-  glitchRate = parseInt(e.target.value);
-  document.getElementById('rate-v').textContent = glitchRate;
-});
-
-document.getElementById('range-r').addEventListener('input', e => {
-  glitchRange = parseInt(e.target.value);
-  document.getElementById('range-v').textContent = glitchRange;
 });
 
 document.addEventListener('DOMContentLoaded', () => { startCam(); });
