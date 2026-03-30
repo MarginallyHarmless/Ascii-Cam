@@ -254,7 +254,66 @@ const srcCtx   = srcCv.getContext('2d');
 const errorOverlay = document.getElementById('error-overlay');
 const btnFlip  = document.getElementById('btn-flip');
 
+// Three.js state
+let renderer, scene, camera, charMesh, dummy;
+let atlasTexture, atlasCanvas, atlasCtx;
+let charCellW = 32, charCellH = 64;
+let charCount = 0;
+let instancePositions, instanceVelocities, instanceRotations, instanceAngularVel, instancePhases;
+const SPRING_K = 2.0;
+const DAMPING = 0.95;
+const ANGULAR_DAMPING = 0.92;
+const FORCE_MULT = 15.0;
+let lastTime = 0;
+
 function brightness(r,g,b){ return 0.299*r + 0.587*g + 0.114*b; }
+
+function buildAtlas(chars) {
+  const count = chars.length;
+  if (!atlasCanvas) {
+    atlasCanvas = document.createElement('canvas');
+    atlasCtx = atlasCanvas.getContext('2d');
+  }
+  atlasCanvas.width = charCellW * count;
+  atlasCanvas.height = charCellH;
+  atlasCtx.clearRect(0, 0, atlasCanvas.width, atlasCanvas.height);
+  atlasCtx.fillStyle = '#fff';
+  atlasCtx.font = `${charCellH * 0.75}px monospace`;
+  atlasCtx.textBaseline = 'middle';
+  atlasCtx.textAlign = 'center';
+  for (let i = 0; i < count; i++) {
+    atlasCtx.fillText(chars[i], charCellW * i + charCellW / 2, charCellH / 2);
+  }
+  if (atlasTexture) {
+    atlasTexture.needsUpdate = true;
+  } else {
+    atlasTexture = new THREE.CanvasTexture(atlasCanvas);
+    atlasTexture.minFilter = THREE.LinearFilter;
+    atlasTexture.magFilter = THREE.LinearFilter;
+  }
+}
+
+function initThree() {
+  renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x000000);
+  renderer.domElement.style.cssText = 'position:fixed;inset:0;z-index:0;display:block;';
+  document.body.prepend(renderer.domElement);
+
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+  dummy = new THREE.Object3D();
+
+  buildAtlas(charset);
+
+  window.addEventListener('resize', () => {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    prevBrightness = null;
+  });
+}
 
 function sampleFrame() {
   const sw = feed.videoWidth, sh = feed.videoHeight;
@@ -388,7 +447,7 @@ document.getElementById('cols-r').addEventListener('input', e => {
   prevBrightness = null;
 });
 
-document.addEventListener('DOMContentLoaded', () => { startCam(); });
+document.addEventListener('DOMContentLoaded', () => { initThree(); startCam(); });
 </script>
 </body>
 </html>
