@@ -243,6 +243,9 @@ let animId = null;
 let running = false;
 
 let targetIdx = [], charColors = [];
+let prevBrightness = null;
+let motionDelta = null;
+let sensitivity = 8;
 let numCols = 0, numRows = 0;
 
 const feed     = document.getElementById('feed');
@@ -297,6 +300,24 @@ function sampleFrame() {
     charColors[i*3+1] = g;
     charColors[i*3+2] = b;
   }
+
+  // motion detection
+  if (!prevBrightness || prevBrightness.length !== n) {
+    prevBrightness = new Float32Array(n);
+    motionDelta = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      prevBrightness[i] = brightness(data[i*4], data[i*4+1], data[i*4+2]) / 255;
+    }
+    return true;
+  }
+
+  for (let i = 0; i < n; i++) {
+    const d = i * 4;
+    const br = brightness(data[d], data[d+1], data[d+2]) / 255;
+    motionDelta[i] = Math.abs(br - prevBrightness[i]);
+    prevBrightness[i] = br;
+  }
+
   return true;
 }
 
@@ -349,15 +370,22 @@ document.getElementById('btn-save').addEventListener('click', () => {
   // updated in Task 5 to use Three.js renderer
 });
 
+document.getElementById('sens-r').addEventListener('input', e => {
+  sensitivity = parseInt(e.target.value);
+  document.getElementById('sens-v').textContent = sensitivity;
+});
+
 document.getElementById('charset-sel').addEventListener('change', e => {
   charset = CHARSETS[e.target.value];
   targetIdx = [];
+  prevBrightness = null;
 });
 
 document.getElementById('cols-r').addEventListener('input', e => {
   cols = parseInt(e.target.value);
   document.getElementById('cols-v').textContent = cols;
   targetIdx = [];
+  prevBrightness = null;
 });
 
 document.addEventListener('DOMContentLoaded', () => { startCam(); });
