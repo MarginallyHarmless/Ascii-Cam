@@ -277,7 +277,7 @@ function sampleFrame() {
   const cw = window.innerWidth / numCols;
   const fs = cw / 0.62;
   const ch = fs * 1.25;
-  numRows = Math.max(1, Math.floor(window.innerHeight / ch));
+  numRows = Math.max(1, Math.floor((window.innerHeight - document.querySelector('.bar').offsetHeight) / ch));
 
   srcCv.width  = numCols;
   srcCv.height = numRows;
@@ -338,7 +338,7 @@ function applyGlitch() {
 
 function drawFrame() {
   const W = window.innerWidth;
-  const H = window.innerHeight;
+  const H = window.innerHeight - document.querySelector('.bar').offsetHeight;
 
   const cw = W / numCols;
   const fs = cw / 0.62;
@@ -387,6 +387,7 @@ function loop() {
 
 async function startCam() {
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  running = false;
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: facingMode }, width: { ideal: 640 } },
