@@ -25,15 +25,6 @@ html, body {
   overflow: hidden;
 }
 
-/* ---------- fullscreen canvas ---------- */
-#out-canvas {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  display: block;
-}
-
 /* ---------- error overlay ---------- */
 .error-overlay {
   display: none;
@@ -203,10 +194,9 @@ input[type=range]::-webkit-slider-thumb:active {
   }
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.min.js"></script>
 </head>
 <body>
-
-<canvas id="out-canvas"></canvas>
 
 <div class="error-overlay" id="error-overlay">camera access required</div>
 
@@ -222,10 +212,8 @@ input[type=range]::-webkit-slider-thumb:active {
     </select>
     <input type="range" id="cols-r" min="30" max="140" value="72" step="2" title="columns" />
     <span class="val" id="cols-v">72</span>
-    <input type="range" id="rate-r" min="0" max="100" value="18" step="1" title="glitch rate" />
-    <span class="val" id="rate-v">18</span>
-    <input type="range" id="range-r" min="1" max="8" value="2" step="1" title="glitch range" />
-    <span class="val" id="range-v">2</span>
+    <input type="range" id="sens-r" min="1" max="20" value="8" step="1" title="sensitivity" />
+    <span class="val" id="sens-v">8</span>
   </div>
   <div class="bar-right">
     <button class="btn" id="btn-flip" style="display:none;">flip</button>
