@@ -206,18 +206,18 @@ input[type=range]::-webkit-slider-thumb:active {
   </div>
   <div class="bar-center">
     <select id="charset-sel" title="charset">
-      <option value="dense">dense</option>
+      <option value="dense">70-tone</option>
       <option value="blocks">blocks</option>
       <option value="minimal">minimal</option>
     </select>
-    <input type="range" id="cols-r" min="30" max="140" value="72" step="2" title="columns" />
-    <span class="val" id="cols-v">72</span>
+    <input type="range" id="cols-r" min="30" max="200" value="120" step="2" title="columns" />
+    <span class="val" id="cols-v">120</span>
     <input type="range" id="sens-r" min="1" max="20" value="8" step="1" title="sensitivity" />
     <span class="val" id="sens-v">8</span>
   </div>
   <div class="bar-right">
     <button class="btn" id="btn-flip" style="display:none;">flip</button>
-    <button class="btn" id="btn-color">mono</button>
+    <button class="btn active" id="btn-color">color</button>
     <button class="btn" id="btn-inv">inv</button>
     <button class="btn" id="btn-save">save</button>
   </div>
@@ -228,13 +228,13 @@ input[type=range]::-webkit-slider-thumb:active {
 
 <script>
 const CHARSETS = {
-  dense:  '@#S%?*+;:,. ',
+  dense:  '$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,"^`\'. ',
   blocks: '█▓▒░ ',
   minimal:'@:. '
 };
 
-let cols = 72;
-let colorMode = false;
+let cols = 120;
+let colorMode = true;
 let inverted = false;
 let charset = CHARSETS.dense;
 let facingMode = 'user';
