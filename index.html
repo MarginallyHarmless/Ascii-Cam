@@ -346,6 +346,7 @@ function rebuildMesh() {
       charLen: { value: charset.length }
     },
     vertexShader: `
+      uniform float charLen;
       attribute float instanceUvOffset;
       attribute vec3 instanceColorAttr;
       varying vec2 vUv;
