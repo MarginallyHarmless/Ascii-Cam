@@ -218,74 +218,32 @@
 </head>
 <body>
 
-<div class="shell">
+<canvas id="out-canvas"></canvas>
 
-  <div class="header">
+<div class="error-overlay" id="error-overlay">camera access required</div>
+
+<div class="bar">
+  <div class="bar-left">
     <div class="logo">ascii<span>cam</span></div>
-    <div class="status" id="status">// idle</div>
   </div>
-
-  <div class="canvas-wrap" id="canvas-wrap">
-    <div class="idle-msg" id="idle-msg">tap <span style="color:var(--accent)">start camera</span><br/>to begin</div>
-    <canvas id="out-canvas"></canvas>
+  <div class="bar-center">
+    <select id="charset-sel" title="charset">
+      <option value="dense">dense</option>
+      <option value="blocks">blocks</option>
+      <option value="minimal">minimal</option>
+    </select>
+    <input type="range" id="cols-r" min="30" max="140" value="72" step="2" title="columns" />
+    <span class="val" id="cols-v">72</span>
+    <input type="range" id="rate-r" min="0" max="100" value="18" step="1" title="glitch rate" />
+    <span class="val" id="rate-v">18</span>
+    <input type="range" id="range-r" min="1" max="8" value="2" step="1" title="glitch range" />
+    <span class="val" id="range-v">2</span>
   </div>
-
-  <div class="controls">
-
-    <!-- camera + flip + color + save -->
-    <div class="btn-row">
-      <button class="btn primary" id="btn-cam">start camera</button>
-      <button class="btn small" id="btn-flip" style="display:none;">flip</button>
-      <button class="btn small" id="btn-color">mono</button>
-      <button class="btn small" id="btn-save">save</button>
-    </div>
-
-    <!-- charset -->
-    <div class="ctrl-row">
-      <div class="ctrl-group">
-        <div class="ctrl-label">charset</div>
-        <select id="charset-sel">
-          <option value="dense">dense — @#S%?*+;:,.</option>
-          <option value="blocks">blocks — █▓▒░</option>
-          <option value="minimal">minimal — @:.</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- sliders -->
-    <div class="ctrl-row">
-      <div class="ctrl-group">
-        <div class="ctrl-label">columns</div>
-        <div class="slider-row">
-          <input type="range" id="cols-r" min="30" max="140" value="72" step="2" />
-          <span class="val" id="cols-v">72</span>
-        </div>
-      </div>
-      <div class="ctrl-group">
-        <div class="ctrl-label">glitch rate</div>
-        <div class="slider-row">
-          <input type="range" id="rate-r" min="0" max="100" value="18" step="1" />
-          <span class="val" id="rate-v">18</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="ctrl-row">
-      <div class="ctrl-group">
-        <div class="ctrl-label">glitch range</div>
-        <div class="slider-row">
-          <input type="range" id="range-r" min="1" max="8" value="2" step="1" />
-          <span class="val" id="range-v">2</span>
-        </div>
-      </div>
-      <div class="ctrl-group">
-        <div class="ctrl-label">invert</div>
-        <div class="slider-row" style="padding-top:2px;">
-          <button class="btn small" id="btn-inv" style="flex:1;">off</button>
-        </div>
-      </div>
-    </div>
-
+  <div class="bar-right">
+    <button class="btn" id="btn-flip" style="display:none;">flip</button>
+    <button class="btn" id="btn-color">mono</button>
+    <button class="btn" id="btn-inv">inv</button>
+    <button class="btn" id="btn-save">save</button>
   </div>
 </div>
 
