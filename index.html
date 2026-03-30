@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>ascii cam</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -178,7 +178,7 @@ input[type=range]::-webkit-slider-thumb:active {
     height: auto;
     min-height: 40px;
     flex-wrap: wrap;
-    padding: 8px 10px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
     gap: 8px;
   }
 
@@ -273,11 +273,13 @@ function sampleFrame() {
   const sw = feed.videoWidth, sh = feed.videoHeight;
   if (!sw || !sh) return false;
 
+  const videoAspect = sh / sw;
   numCols = cols;
   const cw = window.innerWidth / numCols;
   const fs = cw / 0.62;
   const ch = fs * 1.25;
-  numRows = Math.max(1, Math.floor((window.innerHeight - document.querySelector('.bar').offsetHeight) / ch));
+  const maxRows = Math.max(1, Math.floor((window.innerHeight - document.querySelector('.bar').offsetHeight) / ch));
+  numRows = Math.min(maxRows, Math.max(1, Math.round(numCols * videoAspect / (ch / cw))));
 
   srcCv.width  = numCols;
   srcCv.height = numRows;
