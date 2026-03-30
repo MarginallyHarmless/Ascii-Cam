@@ -315,6 +315,162 @@ function initThree() {
   });
 }
 
+function rebuildMesh() {
+  if (charMesh) { scene.remove(charMesh); charMesh.geometry.dispose(); charMesh.material.dispose(); }
+  if (!numCols || !numRows) return;
+
+  const barH = document.querySelector('.bar').offsetHeight;
+  const viewH = window.innerHeight - barH;
+  const viewW = window.innerWidth;
+
+  const dist = 10;
+  const vFov = camera.fov * Math.PI / 180;
+  const worldH = 2 * Math.tan(vFov / 2) * dist;
+  const worldW = worldH * (viewW / viewH);
+  const cw = worldW / numCols;
+  const ch = cw * 2.0;
+
+  const gridH = numRows * ch;
+  const gridW = numCols * cw;
+  const neededDist = (gridH / 2) / Math.tan(vFov / 2) * 1.05;
+  camera.position.set(0, 0, neededDist);
+  camera.lookAt(0, 0, 0);
+
+  const n = numCols * numRows;
+  charCount = n;
+
+  const geom = new THREE.PlaneGeometry(cw, ch);
+  const mat = new THREE.MeshBasicMaterial({
+    map: atlasTexture,
+    transparent: true,
+    alphaTest: 0.1,
+    side: THREE.DoubleSide
+  });
+  charMesh = new THREE.InstancedMesh(geom, mat, n);
+  charMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+  const uvOffsets = new Float32Array(n);
+  charMesh.geometry.setAttribute('instanceUvOffset', new THREE.InstancedBufferAttribute(uvOffsets, 1));
+
+  mat.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <uv_vertex>',
+      `#include <uv_vertex>
+       vMapUv.x = vMapUv.x / ${charset.length.toFixed(1)} + instanceUvOffset;`
+    );
+    shader.vertexShader = shader.vertexShader.replace(
+      'void main() {',
+      `attribute float instanceUvOffset;\nvoid main() {`
+    );
+  };
+
+  instancePositions = new Float32Array(n * 3);
+  instanceVelocities = new Float32Array(n * 3);
+  instanceRotations = new Float32Array(n);
+  instanceAngularVel = new Float32Array(n);
+  instancePhases = new Float32Array(n);
+
+  const startX = -(gridW - cw) / 2;
+  const startY = (gridH - ch) / 2;
+
+  for (let row = 0; row < numRows; row++) {
+    for (let col = 0; col < numCols; col++) {
+      const i = row * numCols + col;
+      const x = startX + col * cw;
+      const y = startY - row * ch;
+      instancePositions[i * 3] = x;
+      instancePositions[i * 3 + 1] = y;
+      instancePositions[i * 3 + 2] = 0;
+      instancePhases[i] = i * 0.1;
+
+      dummy.position.set(x, y, 0);
+      dummy.rotation.set(0, 0, 0);
+      dummy.updateMatrix();
+      charMesh.setMatrixAt(i, dummy.matrix);
+    }
+  }
+
+  charMesh.userData.restPositions = new Float32Array(instancePositions);
+  charMesh.instanceMatrix.needsUpdate = true;
+
+  charMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3);
+  charMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+
+  scene.add(charMesh);
+}
+
+function updateInstances(time, dt) {
+  if (!charMesh || charCount === 0) return;
+
+  const rest = charMesh.userData.restPositions;
+  const uvAttr = charMesh.geometry.getAttribute('instanceUvOffset');
+  const charLen = charset.length;
+  const sensThreshold = (21 - sensitivity) / 100;
+
+  for (let i = 0; i < charCount; i++) {
+    if (targetIdx.length > i) {
+      uvAttr.array[i] = targetIdx[i] / charLen;
+    }
+
+    if (charColors.length > i * 3) {
+      if (colorMode) {
+        charMesh.instanceColor.array[i * 3] = charColors[i * 3] / 255;
+        charMesh.instanceColor.array[i * 3 + 1] = charColors[i * 3 + 1] / 255;
+        charMesh.instanceColor.array[i * 3 + 2] = charColors[i * 3 + 2] / 255;
+      } else {
+        const ci = targetIdx[i] || 0;
+        const br = 1 - ci / Math.max(1, charLen - 1);
+        charMesh.instanceColor.array[i * 3] = br;
+        charMesh.instanceColor.array[i * 3 + 1] = br;
+        charMesh.instanceColor.array[i * 3 + 2] = br;
+      }
+    }
+
+    if (motionDelta && motionDelta.length > i && motionDelta[i] > sensThreshold) {
+      const force = motionDelta[i] * FORCE_MULT;
+      instanceVelocities[i * 3] += (Math.random() - 0.5) * 2 * force;
+      instanceVelocities[i * 3 + 1] += (Math.random() - 0.5) * 2 * force;
+      instanceVelocities[i * 3 + 2] += (Math.random() - 0.5) * 2 * force;
+      instanceAngularVel[i] += (Math.random() - 0.5) * force * 2.0;
+    }
+
+    const restZ = Math.sin(time * 0.5 + instancePhases[i]) * 0.15;
+
+    const rx = rest[i * 3], ry = rest[i * 3 + 1], rz = rest[i * 3 + 2] + restZ;
+    const dx = instancePositions[i * 3] - rx;
+    const dy = instancePositions[i * 3 + 1] - ry;
+    const dz = instancePositions[i * 3 + 2] - rz;
+
+    instanceVelocities[i * 3] += -SPRING_K * dx * dt;
+    instanceVelocities[i * 3 + 1] += -SPRING_K * dy * dt;
+    instanceVelocities[i * 3 + 2] += -SPRING_K * dz * dt;
+
+    instanceVelocities[i * 3] *= DAMPING;
+    instanceVelocities[i * 3 + 1] *= DAMPING;
+    instanceVelocities[i * 3 + 2] *= DAMPING;
+
+    instancePositions[i * 3] += instanceVelocities[i * 3] * dt;
+    instancePositions[i * 3 + 1] += instanceVelocities[i * 3 + 1] * dt;
+    instancePositions[i * 3 + 2] += instanceVelocities[i * 3 + 2] * dt;
+
+    instanceAngularVel[i] *= ANGULAR_DAMPING;
+    instanceRotations[i] += instanceAngularVel[i] * dt;
+
+    dummy.position.set(
+      instancePositions[i * 3],
+      instancePositions[i * 3 + 1],
+      instancePositions[i * 3 + 2]
+    );
+    dummy.rotation.set(0, 0, instanceRotations[i]);
+    dummy.updateMatrix();
+    charMesh.setMatrixAt(i, dummy.matrix);
+  }
+
+  uvAttr.needsUpdate = true;
+  charMesh.instanceColor.needsUpdate = true;
+  charMesh.instanceMatrix.needsUpdate = true;
+}
+
 function sampleFrame() {
   const sw = feed.videoWidth, sh = feed.videoHeight;
   if (!sw || !sh) return false;
@@ -380,10 +536,27 @@ function sampleFrame() {
   return true;
 }
 
-function loop() {
+function loop(timestamp) {
   animId = requestAnimationFrame(loop);
   if (!running) return;
-  sampleFrame();
+
+  const time = timestamp * 0.001;
+  const dt = Math.min(time - lastTime, 0.05);
+  lastTime = time;
+
+  const needsRebuild = sampleFrame();
+  if (needsRebuild && (!charMesh || charCount !== numCols * numRows)) {
+    rebuildMesh();
+  }
+
+  if (camera && charMesh) {
+    camera.position.x = Math.sin(time * 0.15) * 0.3;
+    camera.position.y = Math.cos(time * 0.1) * 0.2;
+    camera.lookAt(0, 0, 0);
+  }
+
+  updateInstances(time, dt);
+  renderer.render(scene, camera);
 }
 
 async function startCam() {
@@ -426,7 +599,11 @@ document.getElementById('btn-inv').addEventListener('click', function() {
 });
 
 document.getElementById('btn-save').addEventListener('click', () => {
-  // updated in Task 5 to use Three.js renderer
+  if (!renderer) return;
+  const a = document.createElement('a');
+  a.href = renderer.domElement.toDataURL('image/png');
+  a.download = 'ascii-cam.png';
+  a.click();
 });
 
 document.getElementById('sens-r').addEventListener('input', e => {
@@ -438,6 +615,11 @@ document.getElementById('charset-sel').addEventListener('change', e => {
   charset = CHARSETS[e.target.value];
   targetIdx = [];
   prevBrightness = null;
+  buildAtlas(charset);
+  if (charMesh) {
+    charMesh.material.needsUpdate = true;
+    charCount = 0;
+  }
 });
 
 document.getElementById('cols-r').addEventListener('input', e => {
@@ -445,6 +627,7 @@ document.getElementById('cols-r').addEventListener('input', e => {
   document.getElementById('cols-v').textContent = cols;
   targetIdx = [];
   prevBrightness = null;
+  charCount = 0;
 });
 
 document.addEventListener('DOMContentLoaded', () => { initThree(); startCam(); });
