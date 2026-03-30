@@ -264,12 +264,8 @@ const srcCv    = document.getElementById('src-canvas');
 const srcCtx   = srcCv.getContext('2d');
 const outCv    = document.getElementById('out-canvas');
 const outCtx   = outCv.getContext('2d');
-const statusEl = document.getElementById('status');
-const idleMsg  = document.getElementById('idle-msg');
-const btnCam   = document.getElementById('btn-cam');
+const errorOverlay = document.getElementById('error-overlay');
 const btnFlip  = document.getElementById('btn-flip');
-
-function setStatus(t) { statusEl.textContent = t; }
 
 function brightness(r,g,b){ return 0.299*r + 0.587*g + 0.114*b; }
 
@@ -277,9 +273,11 @@ function sampleFrame() {
   const sw = feed.videoWidth, sh = feed.videoHeight;
   if (!sw || !sh) return false;
 
-  const aspect = sh / sw;
   numCols = cols;
-  numRows = Math.max(1, Math.round(cols * aspect / 2.1));
+  const cw = window.innerWidth / numCols;
+  const fs = cw / 0.62;
+  const ch = fs * 1.25;
+  numRows = Math.max(1, Math.floor(window.innerHeight / ch));
 
   srcCv.width  = numCols;
   srcCv.height = numRows;
@@ -339,11 +337,12 @@ function applyGlitch() {
 }
 
 function drawFrame() {
-  const fs = 7;
-  const cw = fs * 0.62;
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+
+  const cw = W / numCols;
+  const fs = cw / 0.62;
   const ch = fs * 1.25;
-  const W = Math.round(numCols * cw);
-  const H = Math.round(numRows * ch);
 
   if (outCv.width !== W || outCv.height !== H) {
     outCv.width = W; outCv.height = H;
@@ -387,8 +386,7 @@ function loop() {
 }
 
 async function startCam() {
-  if (stream) stopCam();
-  setStatus('// requesting camera…');
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: facingMode }, width: { ideal: 640 } },
@@ -397,43 +395,20 @@ async function startCam() {
     feed.srcObject = stream;
     await feed.play();
     running = true;
-    idleMsg.style.display = 'none';
-    outCv.style.display = 'block';
-    btnCam.textContent = 'stop';
-    btnCam.classList.remove('primary');
-    // only show flip if device has more than one camera
     const devices = await navigator.mediaDevices.enumerateDevices();
     const camCount = devices.filter(d => d.kind === 'videoinput').length;
     btnFlip.style.display = camCount > 1 ? '' : 'none';
-    setStatus('// live · ' + (camCount > 1 ? facingMode : 'webcam'));
     if (!animId) loop();
   } catch(e) {
-    setStatus('// camera denied');
+    errorOverlay.classList.add('visible');
     console.error(e);
   }
 }
 
-function stopCam() {
-  running = false;
-  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-  feed.srcObject = null;
-  targetIdx = []; displayIdx = []; glitchTTL = []; charColors = [];
-  outCv.style.display = 'none';
-  idleMsg.style.display = '';
-  btnCam.textContent = 'start camera';
-  btnCam.classList.add('primary');
-  btnFlip.style.display = 'none';
-  setStatus('// idle');
-}
-
-btnCam.addEventListener('click', () => {
-  if (running) stopCam(); else startCam();
-});
-
 btnFlip.addEventListener('click', () => {
   facingMode = facingMode === 'user' ? 'environment' : 'user';
   btnFlip.textContent = facingMode === 'user' ? 'flip' : 'rear';
-  if (running) startCam();
+  startCam();
 });
 
 document.getElementById('btn-color').addEventListener('click', function() {
@@ -444,7 +419,7 @@ document.getElementById('btn-color').addEventListener('click', function() {
 
 document.getElementById('btn-inv').addEventListener('click', function() {
   inverted = !inverted;
-  this.textContent = inverted ? 'on' : 'off';
+  this.textContent = inverted ? 'inv!' : 'inv';
   this.classList.toggle('active', inverted);
 });
 
@@ -476,6 +451,8 @@ document.getElementById('range-r').addEventListener('input', e => {
   glitchRange = parseInt(e.target.value);
   document.getElementById('range-v').textContent = glitchRange;
 });
+
+document.addEventListener('DOMContentLoaded', () => { startCam(); });
 </script>
 </body>
 </html>
