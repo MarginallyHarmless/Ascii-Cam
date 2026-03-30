@@ -210,8 +210,8 @@ input[type=range]::-webkit-slider-thumb:active {
       <option value="blocks">blocks</option>
       <option value="minimal">minimal</option>
     </select>
-    <input type="range" id="cols-r" min="30" max="200" value="120" step="2" title="columns" />
-    <span class="val" id="cols-v">120</span>
+    <input type="range" id="cols-r" min="30" max="300" value="160" step="2" title="columns" />
+    <span class="val" id="cols-v">160</span>
     <input type="range" id="sens-r" min="1" max="20" value="8" step="1" title="sensitivity" />
     <span class="val" id="sens-v">8</span>
   </div>
@@ -233,7 +233,7 @@ const CHARSETS = {
   minimal:'@:. '
 };
 
-let cols = 120;
+let cols = 160;
 let colorMode = true;
 let inverted = false;
 let charset = CHARSETS.dense;
@@ -260,10 +260,10 @@ let atlasTexture, atlasCanvas, atlasCtx;
 let charCellW = 32, charCellH = 64;
 let charCount = 0;
 let instancePositions, instanceVelocities, instanceRotations, instanceAngularVel, instancePhases;
-const SPRING_K = 2.0;
-const DAMPING = 0.95;
-const ANGULAR_DAMPING = 0.92;
-const FORCE_MULT = 15.0;
+const SPRING_K = 5.0;
+const DAMPING = 0.88;
+const ANGULAR_DAMPING = 0.85;
+const FORCE_MULT = 4.0;
 let lastTime = 0;
 
 function brightness(r,g,b){ return 0.299*r + 0.587*g + 0.114*b; }
@@ -448,7 +448,7 @@ function updateInstances(time, dt) {
       instanceAngularVel[i] += (Math.random() - 0.5) * force * 2.0;
     }
 
-    const restZ = Math.sin(time * 0.5 + instancePhases[i]) * 0.15;
+    const restZ = Math.sin(time * 0.5 + instancePhases[i]) * 0.05;
 
     const rx = rest[i * 3], ry = rest[i * 3 + 1], rz = rest[i * 3 + 2] + restZ;
     const dx = instancePositions[i * 3] - rx;
