@@ -340,10 +340,33 @@ function rebuildMesh() {
   charCount = n;
 
   const geom = new THREE.PlaneGeometry(cw, ch);
-  const mat = new THREE.MeshBasicMaterial({
-    map: atlasTexture,
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      atlas: { value: atlasTexture },
+      charLen: { value: charset.length }
+    },
+    vertexShader: `
+      attribute float instanceUvOffset;
+      attribute vec3 instanceColorAttr;
+      varying vec2 vUv;
+      varying vec3 vColor;
+      void main() {
+        vUv = vec2(uv.x / charLen + instanceUvOffset, uv.y);
+        vColor = instanceColorAttr;
+        gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D atlas;
+      varying vec2 vUv;
+      varying vec3 vColor;
+      void main() {
+        vec4 texel = texture2D(atlas, vUv);
+        if (texel.a < 0.1) discard;
+        gl_FragColor = vec4(vColor * texel.rgb, texel.a);
+      }
+    `,
     transparent: true,
-    alphaTest: 0.1,
     side: THREE.DoubleSide
   });
   charMesh = new THREE.InstancedMesh(geom, mat, n);
@@ -352,17 +375,9 @@ function rebuildMesh() {
   const uvOffsets = new Float32Array(n);
   charMesh.geometry.setAttribute('instanceUvOffset', new THREE.InstancedBufferAttribute(uvOffsets, 1));
 
-  mat.onBeforeCompile = (shader) => {
-    shader.vertexShader = shader.vertexShader.replace(
-      '#include <uv_vertex>',
-      `#include <uv_vertex>
-       vMapUv.x = vMapUv.x / ${charset.length.toFixed(1)} + instanceUvOffset;`
-    );
-    shader.vertexShader = shader.vertexShader.replace(
-      'void main() {',
-      `attribute float instanceUvOffset;\nvoid main() {`
-    );
-  };
+  const colorAttr = new Float32Array(n * 3);
+  charMesh.geometry.setAttribute('instanceColorAttr', new THREE.InstancedBufferAttribute(colorAttr, 3));
+  charMesh.geometry.attributes.instanceColorAttr.setUsage(THREE.DynamicDrawUsage);
 
   instancePositions = new Float32Array(n * 3);
   instanceVelocities = new Float32Array(n * 3);
@@ -393,9 +408,6 @@ function rebuildMesh() {
   charMesh.userData.restPositions = new Float32Array(instancePositions);
   charMesh.instanceMatrix.needsUpdate = true;
 
-  charMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3);
-  charMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
-
   scene.add(charMesh);
 }
 
@@ -404,6 +416,7 @@ function updateInstances(time, dt) {
 
   const rest = charMesh.userData.restPositions;
   const uvAttr = charMesh.geometry.getAttribute('instanceUvOffset');
+  const colorAttr = charMesh.geometry.getAttribute('instanceColorAttr');
   const charLen = charset.length;
   const sensThreshold = (21 - sensitivity) / 100;
 
@@ -414,15 +427,15 @@ function updateInstances(time, dt) {
 
     if (charColors.length > i * 3) {
       if (colorMode) {
-        charMesh.instanceColor.array[i * 3] = charColors[i * 3] / 255;
-        charMesh.instanceColor.array[i * 3 + 1] = charColors[i * 3 + 1] / 255;
-        charMesh.instanceColor.array[i * 3 + 2] = charColors[i * 3 + 2] / 255;
+        colorAttr.array[i * 3] = charColors[i * 3] / 255;
+        colorAttr.array[i * 3 + 1] = charColors[i * 3 + 1] / 255;
+        colorAttr.array[i * 3 + 2] = charColors[i * 3 + 2] / 255;
       } else {
         const ci = targetIdx[i] || 0;
         const br = 1 - ci / Math.max(1, charLen - 1);
-        charMesh.instanceColor.array[i * 3] = br;
-        charMesh.instanceColor.array[i * 3 + 1] = br;
-        charMesh.instanceColor.array[i * 3 + 2] = br;
+        colorAttr.array[i * 3] = br;
+        colorAttr.array[i * 3 + 1] = br;
+        colorAttr.array[i * 3 + 2] = br;
       }
     }
 
@@ -467,7 +480,7 @@ function updateInstances(time, dt) {
   }
 
   uvAttr.needsUpdate = true;
-  charMesh.instanceColor.needsUpdate = true;
+  colorAttr.needsUpdate = true;
   charMesh.instanceMatrix.needsUpdate = true;
 }
 
@@ -616,10 +629,7 @@ document.getElementById('charset-sel').addEventListener('change', e => {
   targetIdx = [];
   prevBrightness = null;
   buildAtlas(charset);
-  if (charMesh) {
-    charMesh.material.needsUpdate = true;
-    charCount = 0;
-  }
+  charCount = 0;
 });
 
 document.getElementById('cols-r').addEventListener('input', e => {
