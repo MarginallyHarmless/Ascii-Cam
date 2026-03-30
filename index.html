@@ -573,7 +573,7 @@ async function startCam() {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const camCount = devices.filter(d => d.kind === 'videoinput').length;
     btnFlip.style.display = camCount > 1 ? '' : 'none';
-    if (!animId) loop();
+    if (!animId) animId = requestAnimationFrame(loop);
   } catch(e) {
     errorOverlay.classList.add('visible');
     console.error(e);
